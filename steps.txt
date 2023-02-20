@@ -1,0 +1,113 @@
+set PYTHONPATH=D:\Omkar\Software_Development\object-detection\models\research;D:\Omkar\Software_Development\object-detection\models\research\slim
+
+pip install	 -U pillow==8.4.0
+pip install	 -U lxml==4.9.2
+pip install	 -U jupyter==1.0.0
+pip install	 -U matplotlib==3.3.4
+
+protoc object_detection/protos/*.proto --python_out=.
+
+download generate_tfrecord.py
+
+
+cd D:\Omkar\Software_Development\object-detection\models\research\slim
+
+del BUILD
+
+python setup.py install
+
+cd D:\Omkar\Software_Development\object-detection\models\research\object_detection
+
+copy train_labels.csv and test_labels.csv to D:\Omkar\Software_Development\object-detection\data
+
+python generate_tfrecord.py --csv_input=data_custom/train_labels.csv --output_path=data/train.record 
+
+python generate_tfrecord.py --csv_input=data_custom/test_labels.csv --output_path=data/test.record
+
+
+
+
+cd D:\Omkar\Software_Development\object-detection\models\research\object_detection
+
+curl http://download.tensorflow.org/models/object_detection/ssd_mobilenet_v1_coco_11_06_2017.tar.gz -o ssd_mobilenet_v1_coco_11_06_2017.tar.gz
+
+tar -xf ssd_mobilenet_v1_coco_11_06_2017.tar.gz
+
+
+
+mkdir training
+
+cd training
+
+
+curl https://raw.githubusercontent.com/tensorflow/models/master/research/object_detection/samples/configs/ssd_mobilenet_v1_pets.config  -o ssd_mobilenet_v1_pets.config
+
+
+Inside ssd_mobilenet_v1_pets.config -
+
+train_config: {
+  ...
+  num_steps: 500
+  ...
+}
+fine_tune_checkpoint: "D:/Omkar/Software_Development/object-detection/models/research/object_detection/ssd_mobilenet_v1_coco_11_06_2017/model.ckpt"
+  
+train_input_reader: {
+  tf_record_input_reader {
+    input_path: "D:/Omkar/Software_Development/object-detection/models/research/object_detection/data/train.record"
+  }
+  label_map_path: "D:/Omkar/Software_Development/object-detection/models/research/object_detection/training/object-detection.pbtxt"
+}
+eval_input_reader: {
+  tf_record_input_reader {
+    input_path: "D:/Omkar/Software_Development/object-detection/models/research/object_detection/data/test.record"
+  }
+  label_map_path: "D:/Omkar/Software_Development/object-detection/models/research/object_detection/training/object-detection.pbtxt"
+  shuffle: false
+  num_readers: 1
+}
+
+
+
+
+add object-detection.pbtxt
+item {
+  id: 1
+  name: 'helmet'
+}
+item {
+  id: 2
+  name: 'head'
+}
+item {
+  id: 3
+  name: 'other'
+}
+
+
+copy train.py from D:\Omkar\Software_Development\object-detection\models\research\object_detection\legacy\
+to D:\Omkar\Software_Development\object-detection\models\research\
+
+python train.py --logtostderr --train_dir=object_detection/training/ --pipeline_config_path=object_detection/training/ssd_mobilenet_v1_pets.config
+
+python object_detection/model_main_tf2.py --logtostderr --train_dir=object_detection/training/ --pipeline_config_path=object_detection/training/ssd_resnet50_v1_fpn_640x640_coco17.config
+
+
+#download and replace export_inference_graph.py with old from https://raw.githubusercontent.com/datitran/object_detector_app/master/object_detection/export_inference_graph.py
+
+#python export_inference_graph.py --input_type image_tensor --pipeline_config_path training/ssd_mobilenet_v1_pets.config --checkpoint_path training/model.ckpt-20000 --inference_graph_path helmet_detect
+
+python object_detection/export_inference_graph.py  --input_type image_tensor  --pipeline_config_path object_detection/training/ssd_mobilenet_v1_pets.config  --trained_checkpoint_prefix object_detection/training/model.ckpt-20000  --output_directory object_detection/helmet_detect
+
+
+load jupyter notebook object_detection_tutorial.ipynb
+
+comment from line 133 to 154 if statements in D:\Omkar\Software_Development\object-detection\models\research\object_detection\utils\label_map_util.py
+
+
+
+
+copy object_detection to models
+python train.py --logtostderr --train_dir=object_detection/training/ --pipeline_config_path=object_detection/training/ssd_mobilenet_v1_pets.config
+
+python object_detection/export_inference_graph.py  --input_type image_tensor  --pipeline_config_path object_detection/training/ssd_mobilenet_v1_pets.config  --trained_checkpoint_prefix object_detection/training/model.ckpt-500  --output_directory object_detection/helmet_detect
